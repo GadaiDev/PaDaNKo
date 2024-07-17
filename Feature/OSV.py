@@ -10,6 +10,8 @@ import json
 import random
 import re
 
+
+
 def text_replace(text:str):
     text = text.replace("\n","<br>")
     text = re.sub(r"!Img:\"(.+)\"",r"<img src='\1' class='k_img'>", text)
@@ -30,6 +32,13 @@ def post_replace(text:str, name:str, id_, thr):
     
     if "!IP開示" in ich:
         id_ = request.remote_addr
+        
+    if "!ワッチョイ" in ich:
+        wachoi = json.loads(KIT.fopen("./File/BBSwachoi/wachoi.json"))
+        if wachoi.get(request.remote_addr) is None:
+            wachoi[request.remote_addr] = "".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4))+"-"+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4))
+        id_ += f"[ﾜｯﾁｮｲ {wachoi[request.remote_addr]}]"
+        json.dump(wachoi, open("./File/BBSwachoi/wachoi.json", "w"))
 
     return text, name, id_
 

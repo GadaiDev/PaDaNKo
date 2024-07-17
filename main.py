@@ -1,6 +1,8 @@
 from flask import Flask, send_file
+
 import KIT
 
+import sys
 from Feature import OSV
 
 app = Flask(__name__)
@@ -16,4 +18,4 @@ def page_path(path):
 
 OSV.Register(app)
 
-app.run("::", 80, True)
+app.run(sys.argv[1], int(sys.argv[2]), True)
