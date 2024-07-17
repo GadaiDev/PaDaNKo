@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/File/css/PDNKHubMain.css">
+    <link rel="stylesheet" href="/File/css/OSV.css">
+    <title>{{ ttl }} - PaDaNKo OSV</title>
+</head>
+<body>
+    <header style="background-color: rgb(35, 39, 53);">
+        <h1>PaDaNKo OSV</h1>
+        <a href="/">PaDaNKo</a>
+    </header>
+    <div class="page-body">
+        <div id="thread">
+        </div>
+        <hr>
+        <a href="/bbs">掲示板に戻る</a>
+        <hr>
+        お名前:<input id="name" value="{{ Name }}">
+        <textarea style="width: 100%; height:300px;" id="text"></textarea>
+        <button onclick="send()" style="width: 100%; height:150px;"><h2>書き込み</h2></button>
+    </div>
+    <script src="/File/js/jquery.min.js"></script>
+    <script>
+        setInterval(()=>{
+            fetch("http://www.ipv6proxy.net/go.php?u=http%3A%2F%2Fg2channel.dynv6.net%2Fbbs%2Fapi%2Fget%3FthrID%3D{{ thrid }}&b=0")
+            .then((response) => {
+                return response.text()
+            })
+            .then((text) => {
+                document.getElementById("thread").innerHTML=text;
+            })
+        },500)
+        
+        function send() {
+            $.ajax({
+                url: "http://www.ipv6proxy.net/go.php?u=http%3A%2F%2Fg2channel.dynv6.net%2Fbbs%2Fapi%2Fpost%3FthrID%3D{{ thrid }}&b=0",
+                type: "POST",
+                data: {
+                    "name": $("#name").val(),
+                    "text": $("#text").val(),
+                    "thrID": "{{ thrid }}"
+                },
+                dataType: "json",
+            });
+            $("#text").val("");
+        }
+        
+        function addanker(c) {
+            document.getElementById("text").value += ">>"+c+"\n"
+        }
+    </script>
+</body>
+</html>
