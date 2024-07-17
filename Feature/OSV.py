@@ -19,7 +19,10 @@ def text_replace(text:str):
 
 def post_replace(text:str, name:str, id_, thr):
     for i in range(text.count("!Random")):
-        text = text.replace("!Random",f"<b class='k_spc1'>{str(random.randint(0,100))}</b>")
+        text = text.replace("!Random",f"<b class='k_spc1'>{str(random.randint(0,100))}</b>", 1)
+
+    for i in range(text.count("!Coin")):
+        text = text.replace("!Coin",f"<b class='k_spc1'>{random.choice(['裏','表'])}</b>", 1)
 
     if thr == "root":
         ich = text
@@ -34,10 +37,25 @@ def post_replace(text:str, name:str, id_, thr):
         id_ = request.remote_addr
         
     if "!ワッチョイ" in ich or "!ワッチョイ" in text:
+        
+        ua_ = request.headers.get("User-Agent")
+        
+        if "Ubuntu" in ua_:
+            ua = "ｳﾌﾞ"
+        elif "Mac" in ua_:
+            ua = "ｱﾎﾟｰ"
+        elif "Windows" in ua_:
+            ua = "ﾏﾄﾞ"
+        
+        
+        
         wachoi = json.loads(KIT.fopen("./File/BBSwachoi/wachoi.json"))
         if wachoi.get(request.remote_addr) is None:
-            wachoi[request.remote_addr] = "".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4))+"-"+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4))
-        id_ += f"[ﾜｯﾁｮｲ {wachoi[request.remote_addr]}]"
+            wachoi[request.remote_addr] = ("+"+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=3))
+                                            +" "+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4))
+                                            +"-"+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4)))
+
+        id_ += f"[{ua} {wachoi[request.remote_addr]}]"
         json.dump(wachoi, open("./File/BBSwachoi/wachoi.json", "w"))
 
     return text, name, id_
@@ -78,13 +96,13 @@ def Register(app: Flask):
         id_ = session.get("ID","???")
 
         text, name, id_ = post_replace(text, name, id_, "root")
-
+        now = datetime.now()
         thr = {}
         thr["title"] = title
         thr["dat"] = [
             {
                 "name": name,
-                "date": str(datetime.now()),
+                "date": f"{now.year}/{now.month}/{now.day} {now.hour}:{now.minute}:{now.second}",
                 "id": id_,
                 "text": text 
             }
@@ -110,11 +128,11 @@ def Register(app: Flask):
             thr = json.load(open(f"./File/BBS/{thrid}.json", "r"))
 
             text, name, id_ = post_replace(text, name, id_, thr)
-
+            now = datetime.now()
             thr["dat"].append(
                 {
                     "name": name,
-                    "date": str(datetime.now()),
+                    "date": f"{now.year}/{now.month}/{now.day} {now.hour}:{now.minute}:{now.second}",
                     "id": id_,
                     "text": text 
                 }
