@@ -27,6 +27,9 @@ def post_replace(text:str, name:str, id_, thr):
     if "!無個性" in ich:
         name = "OSVの名無しさん"
         id_ = "0000"
+    
+    if "!IP開示" in ich:
+        id_ = request.remote_addr
 
     return text, name, id_
 
