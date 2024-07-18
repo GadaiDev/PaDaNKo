@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/File/css/OSV.css">
     <title>{{ ttl }} - PaDaNKo OSV</title>
 </head>
-<body>
+<body style="background-color: #efefef;" id="body">
     <header style="background-color: rgb(35, 39, 53);">
         <h1>PaDaNKo OSV</h1>
         <a href="/">PaDaNKo</a>
@@ -20,9 +20,20 @@
         <hr>
         お名前:<input id="name" value="{{ Name }}">
         <textarea style="width: 100%; height:300px;" id="text"></textarea>
-        <button onclick="send()" style="width: 100%; height:150px;"><h2>書き込み</h2></button>
+        <button onclick="send()" style="width: 100%; height:150px;"><h2>書き込み</h2></button><br>
+        <input type="button" value="ファイルうｐ" id="file_up_button"><input type="file" id="file_up" accept="image/png, image/jpeg">
+        <audio src="/File/NewPost.mp3" id="Sinchaku"></audio>
+        <div class="windows_container">
+            <div class="window">
+                <h4>MEMO</h4>
+                <span>下書き</span>
+                <button id="memo_write">写す</button><br>
+                <textarea id="memo_text"></textarea>
+            </div>
+        </div>
     </div>
     <script src="/File/js/jquery.min.js"></script>
+    <script src="/File/js/jquery.cookie.min.js"></script>
     <script>
         setInterval(()=>{
             fetch("/bbs/api/get?thrID={{ thrid }}")
@@ -30,10 +41,18 @@
                 return response.text()
             })
             .then((text) => {
-                if (text.includes("addanker") && $("#thread").html().length < text.length) {
+                if($("#thread").html().length < text.length) {
+                    $("#Sinchaku")[0].play()
                     document.getElementById("thread").innerHTML=text;
-                }
+                    if (text.includes("color:white")) {
+                        document.getElementById("thread").style.backgroundColor = "#111111"
+                    }
+                    else {
+                        document.getElementById("thread").style.backgroundColor = "#efefef"
+                    }
+                } 
             })
+            $.cookie("OSVMEMO-{{ thrid }}",$("#memo_text").val())
         },500)
         
         function send() {
@@ -46,13 +65,56 @@
                     "thrID": "{{ thrid }}"
                 },
                 dataType: "json",
-            });
+            })
             $("#text").val("");
         }
         
         function addanker(c) {
             document.getElementById("text").value += ">>"+c+"\n"
         }
+
+        document.getElementById("text").addEventListener("paste", function (event) {
+            const items = event.clipboardData.items;
+            
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+
+                    const reader = new FileReader();
+                    reader.onload = (event)=>{
+                        const base64Image = event.target.result;
+                        $.post("/bbs/api/FUP", {B64File: base64Image}, (data)=>{
+                            $("#text").val($("#text").val()+"\n"+data)
+                        })
+                    };
+
+                    reader.readAsDataURL(blob);
+                }
+            }
+        });
+
+        $("#file_up_button").click(()=>{
+            var file = $('#file_up')[0].files[0];
+            if(!file) {
+                alert('ファイルが設定されていません'); 
+            }
+            else {
+                const reader = new FileReader();
+                reader.onload = (data)=>{
+                    const base64 = event.target.result;
+                    $.post("/bbs/api/FUP", {B64File: base64}, (data)=>{
+                        $("#text").val($("#text").val()+"\n"+data)
+                    })
+                }
+
+                reader.readAsDataURL(file)
+            }
+        })
+
+        $("#memo_write").click(()=>{
+            $("#text").val($("#memo_text").val())
+            $("#memo_text").val("")
+        })
     </script>
 </body>
 </html>
