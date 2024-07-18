@@ -30,9 +30,11 @@
                 return response.text()
             })
             .then((text) => {
-                document.getElementById("thread").innerHTML=text;
+                if (text.includes("addanker") && $("#thread").html().length < text.length) {
+                    document.getElementById("thread").innerHTML=text;
+                }
             })
-        },100)
+        },500)
         
         function send() {
             $.ajax({

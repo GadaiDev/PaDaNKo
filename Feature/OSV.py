@@ -1,15 +1,16 @@
 from flask import Flask, session, request, redirect
-
 from uuid import uuid4
 from datetime import datetime
 
-import ipwhois
-
 import KIT
+
+import ipwhois
 import glob
 import json
 import random
 import re
+import base64
+
 
 
 def text_replace(text:str):
@@ -36,7 +37,7 @@ def post_replace(text:str, name:str, id_, thr):
     if "!IP開示" in ich:
         id_ = request.remote_addr
         
-    if "!ワッチョイ" in ich or "!ワッチョイ" in text:
+    if not "!ワッチョイ無効" in ich:
         
         
         ua_ = request.headers.get("User-Agent")
@@ -169,10 +170,19 @@ def Register(app: Flask):
     def ev_bbs_apiget():
         thrid = request.args.get("thrID","").replace("/","").replace("..","")
         thr = json.load(open(f"./File/BBS/{thrid}.json", "r"))
-
         out = []
         
         for i, d in enumerate(thr["dat"]):
             out.append(f"<dl><dt><a onclick='addanker({i + 1})'>{i + 1}</a>:<b class='k_name'>{d['name']}</b>, {d['date']}, ID:{d['id']}</dt><dd>{text_replace(d['text'])}</dd></dl>")
         
         return f"<h1 class='t_title'>{thr['title']}</h1>\n"+"\n".join(out)
+
+    @app.route("/bbs/api/FUP", methods=["POST"])
+    def ev_bbs_apiFUP():
+        b64text = request.form.get("B64File", "")
+        b64text = re.sub(r"data:[a-zA-Z]+/[a-zA-Z]+;base64,",r"",b64text)
+        print(b64text)
+        id_ = "".join(random.choices("0123456789abcdef", k=16))
+        if not b64text == "":
+            open(f"./File/BBSFile/{id_}","wb").write(base64.b64decode(b64text))
+        return f"!Img:\"/File/BBSFile/{id_}\""
