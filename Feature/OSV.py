@@ -3,13 +3,13 @@ from flask import Flask, session, request, redirect
 from uuid import uuid4
 from datetime import datetime
 
+import ipwhois
 
 import KIT
 import glob
 import json
 import random
 import re
-
 
 
 def text_replace(text:str):
@@ -38,6 +38,7 @@ def post_replace(text:str, name:str, id_, thr):
         
     if "!ワッチョイ" in ich or "!ワッチョイ" in text:
         
+        
         ua_ = request.headers.get("User-Agent")
         
         if "Ubuntu" in ua_:
@@ -46,12 +47,19 @@ def post_replace(text:str, name:str, id_, thr):
             ua = "ｱﾎﾟｰ"
         elif "Windows" in ua_:
             ua = "ﾏﾄﾞ"
-        
+        elif "Android" in ua_:
+            ua = "ﾄﾞﾛ"
+        else:
+            ua = "ｲﾐﾌ"
         
         
         wachoi = json.loads(KIT.fopen("./File/BBSwachoi/wachoi.json"))
         if wachoi.get(request.remote_addr) is None:
-            wachoi[request.remote_addr] = ("+"+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=3))
+            try:
+                head = random.Random(ipwhois.IPWhois(request.remote_addr).lookup_rdap()["nir"]["nets"][0]["name"])
+            except:
+                head = random.Random(request.remote_addr)
+            wachoi[request.remote_addr] = ("+"+"".join(head.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=3))
                                             +" "+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4))
                                             +"-"+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4)))
 
@@ -147,7 +155,7 @@ def Register(app: Flask):
 
         thr = json.load(open(f"./File/BBS/"+thrid+".json", "r"))
         
-        if not request.remote_addr == "2600:3c00::f03c:91ff:fe93:dcd4":
+        if not request.remote_addr == "2600:3c00::f03c:91ff:fe93:dcd4": #IPv6Proxy.NETのアドレス
             html = KIT.html_render("OSV/thread")
         else:
             html = KIT.html_render("OSV/threadP")
@@ -165,9 +173,6 @@ def Register(app: Flask):
         out = []
         
         for i, d in enumerate(thr["dat"]):
-            if thr["dat"][0]["id"] == d["id"]:
-                out.append(f"<dl><dt><a onclick='addanker({i + 1})'>{i + 1}</a>:<b class='k_name'>{d['name']}</b>, {d['date']}, <b class='t_title'>ID:{d['id']}</b></dt><dd>{text_replace(d['text'])}</dd></dl>")
-            else:
-                out.append(f"<dl><dt><a onclick='addanker({i + 1})'>{i + 1}</a>:<b class='k_name'>{d['name']}</b>, {d['date']}, ID:{d['id']}</dt><dd>{text_replace(d['text'])}</dd></dl>")
+            out.append(f"<dl><dt><a onclick='addanker({i + 1})'>{i + 1}</a>:<b class='k_name'>{d['name']}</b>, {d['date']}, ID:{d['id']}</dt><dd>{text_replace(d['text'])}</dd></dl>")
         
         return f"<h1 class='t_title'>{thr['title']}</h1>\n"+"\n".join(out)
