@@ -15,27 +15,32 @@
     <div class="page-body">
         <div id="thread">
         </div>
-        <hr>
         <a href="/bbs">掲示板に戻る</a>
+        | <a onclick="seturl('l10_url')">最新10</a>
+        | <a onclick="seturl('none_url')">全部</a>
         <hr>
         お名前:<input id="name" value="{{ Name }}">
         <textarea style="width: 100%; height:300px;" id="text"></textarea>
         <button onclick="send()" style="width: 100%; height:150px;"><h2>書き込み</h2></button>
         <audio src="/File/NewPost.mp3" id="Sinchaku"></audio>
-
+        <div class="windows_container">
+            <div class="window">
+                <h4>MEMO</h4>
+                <span>下書き</span>
+                <button id="memo_write">写す</button><br>
+                <textarea id="memo_text"></textarea>
+            </div>
+        </div>
     </div>
+    <a href="/bbs/api/get?thrID={{ thrid }}"  id="none_url" style="display: none;"></a>
+    <a href="/bbs/api/get?thrID={{ thrid }}&param=l10" id="l10_url" style="display: none;"></a>
     <script src="/File/js/jquery.min.js"></script>
+    <script src="/File/js/jquery.cookie.min.js"></script>
     <script>
-        if ($.cookie("OSVMEMO-{{ thrid }}")){
-            $("#memo_text").val($.cookie("OSVMEMO-{{ thrid }}"))
-        }
-        else {
-            $.cookie("OSVMEMO-{{ thrid }}", "INITAL MEMO")
-            $("#memo_text").val($.cookie("OSVMEMO-{{ thrid }}"))
-
-        }
+        var url_ = "none_url";
+        console.log($("#"+url_)[0].href)
         setInterval(()=>{
-            fetch("http://www.ipv6proxy.net/go.php?u=http%3A%2F%2Fg2channel.dynv6.net%2Fbbs%2Fapi%2Fget%3FthrID%3D{{ thrid }}&b=0")
+            fetch($("#"+url_)[0].href)
             .then((response) => {
                 return response.text()
             })
@@ -45,8 +50,7 @@
                     document.getElementById("thread").innerHTML=text;
                 }
             })
-            $.cookie("OSVMEMO-{{ thrid }}",$("#memo_text").val())
-        },1000)
+        },500)
         
         function send() {
             $.ajax({
@@ -69,6 +73,40 @@
             $("#text").val($("#memo_text").val())
             $("#memo_text").val("")
         })
+        function grass(){
+            $.ajax({
+                url: "http://www.ipv6proxy.net/go.php?u=http%3A%2F%2Fg2channel.dynv6.net%2Fbbs%2Fapi%2Fgrass%3FthrID%3D{{ thrid }}&b=0",
+                type: "GET",
+                data: {
+                    "thrID": "{{ thrid }}"
+                },
+                dataType: "json",
+            })
+            fetch("http://www.ipv6proxy.net/go.php?u=http%3A%2F%2Fg2channel.dynv6.net%2Fbbs%2Fapi%2Fget%3FthrID%3D{{ thrid }}&b=0")
+            .then((response) => {
+                return response.text()
+            })
+            .then((text) => {
+                document.getElementById("thread").innerHTML=text;
+                if (text.includes("color:white")) {
+                    document.getElementById("thread").style.backgroundColor = "#111111"
+                }
+                else {
+                    document.getElementById("thread").style.backgroundColor = "#efefef"
+                }
+            })
+        }
+
+        function seturl(url){
+            url_ = url
+            fetch($("#"+url_)[0].href)
+            .then((response) => {
+                return response.text()
+            })
+            .then((text) => {
+                document.getElementById("thread").innerHTML=text;
+            })
+        }
     </script>
 </body>
 </html>

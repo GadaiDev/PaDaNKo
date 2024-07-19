@@ -15,8 +15,9 @@
     <div class="page-body">
         <div id="thread">
         </div>
-        <hr>
         <a href="/bbs">掲示板に戻る</a>
+        | <a onclick="seturl('/bbs/api/get?thrID={{ thrid }}&param=l10')">最新10</a>
+        | <a onclick="seturl('/bbs/api/get?thrID={{ thrid }}')">全部</a>
         <hr>
         お名前:<input id="name" value="{{ Name }}">
         <textarea style="width: 100%; height:300px;" id="text"></textarea>
@@ -35,8 +36,9 @@
     <script src="/File/js/jquery.min.js"></script>
     <script src="/File/js/jquery.cookie.min.js"></script>
     <script>
+        var url = "/bbs/api/get?thrID={{ thrid }}"
         setInterval(()=>{
-            fetch("/bbs/api/get?thrID={{ thrid }}")
+            fetch(url)
             .then((response) => {
                 return response.text()
             })
@@ -115,6 +117,46 @@
             $("#text").val($("#memo_text").val())
             $("#memo_text").val("")
         })
+
+        function grass(){
+            $.ajax({
+                url: "/bbs/api/grass",
+                type: "POST",
+                data: {
+                    "thrID": "{{ thrid }}"
+                },
+                dataType: "json",
+            })
+            fetch("/bbs/api/get?thrID={{ thrid }}")
+            .then((response) => {
+                return response.text()
+            })
+            .then((text) => {
+                document.getElementById("thread").innerHTML=text;
+                if (text.includes("color:white")) {
+                    document.getElementById("thread").style.backgroundColor = "#111111"
+                }
+                else {
+                    document.getElementById("thread").style.backgroundColor = "#efefef"
+                }
+            })
+        }
+        function seturl(url_){
+            url = url_
+            fetch(url)
+            .then((response) => {
+                return response.text()
+            })
+            .then((text) => {
+                document.getElementById("thread").innerHTML=text;
+                if (text.includes("color:white")) {
+                    document.getElementById("thread").style.backgroundColor = "#111111"
+                }
+                else {
+                    document.getElementById("thread").style.backgroundColor = "#efefef"
+                }
+            })
+        }
     </script>
 </body>
 </html>

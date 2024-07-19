@@ -3,13 +3,15 @@ from uuid import uuid4
 from datetime import datetime
 
 import KIT
-
+import time
 import ipwhois
 import glob
 import json
 import random
 import re
 import base64
+import threading
+import os
 
 import Feature.OSVAI as OSVAI
 
@@ -38,6 +40,7 @@ def text_replace(text:str):
     return text
 
 def post_replace(text:str, name:str, id_, thr):
+    
     for i in range(text.count("!Random")):
         text = text.replace("!Random",f"<b class='k_spc1'>{str(random.randint(0,100))}</b>", 1)
 
@@ -45,6 +48,8 @@ def post_replace(text:str, name:str, id_, thr):
         text = text.replace("!Coin",f"<b class='k_spc1'>{random.choice(['裏','表'])}</b>", 1)
 
     text = text.replace("!Reload", "<button onclick='location.reload()'>リロード</button>")
+
+
 
     if thr == "root":
         ich = text
@@ -86,11 +91,26 @@ def post_replace(text:str, name:str, id_, thr):
                                             +"-"+"".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4)))
             json.dump(wachoi, open("./File/BBSwachoi/wachoi.json", "w"), ensure_ascii=False, indent=4)
 
-            id_ += f"[{ua} {wachoi[request.remote_addr]}]"
+        name += f"[{ua} {wachoi[request.remote_addr]}]"
+        
     if "!AI\n" in text:
         text += "\n\n"+"<b>"+OSVAI.ai_que(text.replace("!AI\n",""))+"</b>"
-        
-        
+    if thr != "root":
+        if len(thr["dat"]) <= 499:
+            et = thr["endtime"]
+            
+            et = KIT.time_datetime(et)
+            
+            et += KIT.datetime.timedelta(0,0,0,0,1,0,0)
+            
+            et = KIT.datetime_time(et)
+            
+            thr["endtime"] = et
+
+        if "!新スレタイ\n" in text and session.get("ID","???") == thr["dat"][0]["id"]:
+            thr["title"] = text.replace("!新スレタイ\n","")
+        if len(re.findall(r"!Del([0-9]+)", text)) == 1 and thr["dat"][int(re.findall(r"!Del([0-9]+)", text)[0])-1]["id"] == session.get("ID","???"):
+            thr["dat"][int(re.findall(r"!Del([0-9]+)", text)[0])-1]["text"] = "<b style='color:red'>削除済</b>"
 
     text, name, id_, thr = aku_process(text,name,id_,thr)
 
@@ -118,6 +138,7 @@ def Register(app: Flask):
     def ev_bbs_postthread():
         thrid = str(uuid4())
         name = request.form.get("name","名無しさん").replace(">","&gt;").replace("<","&lt;")
+        name = name.replace("[","【").replace("]","】")
         session["Name"] = name
         text = request.form.get("text","NoneType").replace(">","&gt;").replace("<","&lt;")
         title = request.form.get("title","[私はタイトルを入れられない馬鹿です]").replace(">","&gt;").replace("<","&lt;")
@@ -125,31 +146,34 @@ def Register(app: Flask):
         if name == "":
             name = "とくめいさん"
 
-        if title == "":
-            title = "[私はタイトルを入れられない馬鹿です]"
+        if title != "":
+            id_ = session.get("ID","???")
 
+            text, name, id_, _ = post_replace(text, name, id_, "root")
+            now = datetime.now()
+            thr = {"grass":0}
+            thr["title"] = title
+            thr["dat"] = [
+                {
+                    "name": name,
+                    "date": f"{now.year}/{now.month}/{now.day} {now.hour}:{now.minute}:{now.second}",
+                    "id": id_,
+                    "text": text 
+                }
+            ]
+            
+            et = KIT.datetime.datetime.now()
+            et += KIT.datetime.timedelta(0,0,0,0,5)
 
-        id_ = session.get("ID","???")
-
-        text, name, id_, _ = post_replace(text, name, id_, "root")
-        now = datetime.now()
-        thr = {}
-        thr["title"] = title
-        thr["dat"] = [
-            {
-                "name": name,
-                "date": f"{now.year}/{now.month}/{now.day} {now.hour}:{now.minute}:{now.second}",
-                "id": id_,
-                "text": text 
-            }
-        ]
-        json.dump(thr, open(f"./File/BBS/{thrid}.json", "w"), indent=4, ensure_ascii=False)
+            thr["endtime"] = KIT.datetime_time(et)
+            json.dump(thr, open(f"./File/BBS/{thrid}.json", "w"), indent=4, ensure_ascii=False)
         return redirect("/bbs/thread/"+thrid)
 
     @app.route("/bbs/api/post", methods=["POST"])
     def ev_bbs_apipost():
         thrid = request.form.get("thrID","").replace("/","").replace("..","")
         name = request.form.get("name","名無しさん").replace(">","&gt;").replace("<","&lt;")
+        name = name.replace("[","").replace("]","")
         text = request.form.get("text","NoneType").replace(">","&gt;").replace("<","&lt;")
         thr = json.load(open(f"./File/BBS/{thrid}.json", "r"))
 
@@ -183,6 +207,7 @@ def Register(app: Flask):
                     "text": text 
                 }
             )
+            
             json.dump(thr, open(f"./File/BBS/{thrid}.json", "w"), indent=4, ensure_ascii=False)
             return "ok"
         elif len(text) == 0:
@@ -190,15 +215,17 @@ def Register(app: Flask):
         elif session.get("ID","???") in thr["aku"]:
             return "アクセス禁止処置:投稿は不可能です"
         else:
-            return "原因不明のエラー"
+            return "原因不明のエラー:投稿は不可能です"
             
 
     @app.route("/bbs/thread/<thrid>")
     def page_bbs_thread(thrid):
         if session.get("ID") is None:
             session["ID"] = "".join(random.choices("1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=4))
-
-        thr = json.load(open(f"./File/BBS/"+thrid+".json", "r"))
+        try:
+            thr = json.load(open(f"./File/BBS/"+thrid+".json", "r"))
+        except:
+            return "スレがありません。<br>もしかして→JSON落ち"
         
         if not request.remote_addr == "2600:3c00::f03c:91ff:fe93:dcd4": #IPv6Proxy.NETのアドレス
             html = KIT.html_render("OSV/thread")
@@ -213,19 +240,30 @@ def Register(app: Flask):
     @app.route("/bbs/api/get")
     def ev_bbs_apiget():
         thrid = request.args.get("thrID","").replace("/","").replace("..","")
-        thr = json.load(open(f"./File/BBS/{thrid}.json", "r"))
-        if session.get("ID","???") in thr.get("aku",[]):
-            thr = json.load(open(f"./File/BBSFile/Aku.json","r"))
-        out = []
-        
-        for i, d in enumerate(thr["dat"]):
-            if thr.get("Syasei") == "1":
-                out.append(f"<dl><dt style='color:white'><a onclick='addanker({i + 1})'>{i + 1}</a>:<b>{d['name']}</b>, {d['date']}, ID:{d['id']}</dt><dd style='color:white'>{text_replace(d['text'])}</dd></dl>")
-            else:
-                out.append(f"<dl><dt><a onclick='addanker({i + 1})'>{i + 1}</a>:<b class='k_name'>{d['name']}</b>, {d['date']}, ID:{d['id']}</dt><dd>{text_replace(d['text'])}</dd></dl>")
-        
-        return f"<h1 class='t_title'>{thr['title']}</h1>\n"+"\n".join(out)
-
+        try:
+            thr = json.load(open(f"./File/BBS/{thrid}.json", "r"))
+            
+            
+            if session.get("ID","???") in thr.get("aku",[]):
+                thr = json.load(open(f"./File/BBSFile/Aku.json","r"))
+            out = []
+            
+            for i, d in enumerate(thr["dat"]):
+                if thr.get("Syasei") == "1":
+                    out.append(f"<dl><dt style='color:white'><a onclick='addanker({i + 1})'>{i + 1}</a>:<b>{d['name']}</b>, {d['date']}, ID:{d['id']}</dt><dd style='color:white'>{text_replace(d['text'])}</dd></dl>")
+                else:
+                    out.append(f"<dl><dt><a onclick='addanker({i + 1})'>{i + 1}</a>:<b class='k_name'>{d['name']}</b>, {d['date']}, ID:{d['id']}</dt><dd>{text_replace(d['text'])}</dd></dl>")
+            
+            et = KIT.time_datetime(thr["endtime"])
+            
+            if request.args.get("param") is None:
+                pass
+            elif request.args.get("param") == "l10":
+                out = out[len(out)-10:]
+            
+            return f"<h1 class='t_title'>{thr['title']}</h1>\n"+"\n".join(out)+f"\n<hr>\nスレが消える時間:{et.year}/{et.month}/{et.day} {et.hour}:{et.minute}:{et.second}\n<button onclick='grass()' id='grassbtn'>草x{thr["grass"]}</button>"
+        except:
+            return "スレがありません。<br>もしかして落ちましたか？"
     @app.route("/bbs/api/FUP", methods=["POST"])
     def ev_bbs_apiFUP():
         b64text = request.form.get("B64File", "")
@@ -240,3 +278,31 @@ def Register(app: Flask):
         return """User-agent: *
 Disallow: /
 Allow: /bbs/"""
+
+    @app.route("/bbs/api/grass", methods=["GET","POST"])
+    def ev_bbs_apigrass():
+        if request.method == "POST":
+            a = json.load(open(f'./File/BBS/{request.form.get("thrID","")}.json'))
+            a["grass"] += 1
+            json.dump(a, open(f'./File/BBS/{request.form.get("thrID","")}.json', "w"))
+        else:
+            a = json.load(open(f'./File/BBS/{request.args.get("thrID","")}.json'))
+            a["grass"] += 1
+            json.dump(a, open(f'./File/BBS/{request.args.get("thrID","")}.json', "w"))
+        return ""
+        
+    def crawling_delete():
+        while True:
+            for thrid in glob.glob("./File/BBS/*.json"):
+                
+                thrid = thrid.replace("./File/BBS/","")
+                thrid = thrid.replace(".json","")
+                
+                thr = json.load(open(f"./File/BBS/{thrid}.json"))
+                
+                if KIT.time_datetime(KIT.zkk()) > KIT.time_datetime(thr["endtime"]):
+                    os.remove(f"./File/BBS/{thrid}.json")
+            time.sleep(10)                
+    crawling_delete_ = threading.Thread(target=crawling_delete)
+    crawling_delete_.daemon = True
+    crawling_delete_.start()

@@ -4,7 +4,7 @@ import KIT
 from Feature import OSV
 
 app = Flask(__name__)
-app.secret_key = "1919"
+app.secret_key = "Secret!"
 
 @app.route("/")
 def page_index():
